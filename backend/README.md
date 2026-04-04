@@ -1,129 +1,119 @@
 # Backend - AI Chit Fund System
 
-Backend service for the AI Chit Fund System. Connects frontend requests to AI scoring logic and returns auction winners.
+Production-style Express backend for AI chit fund winner selection with real integration points and sandbox/testnet support.
+
+## Stack
+
+- Express API layer
+- Axios for external API integration
+- FastAPI AI scoring integration
+- Ethers.js for Polygon Mumbai transaction write
+- Solidity smart contract for auction records
 
 ## Setup
 
-### 1. Install Dependencies
+1. Install dependencies.
+
 ```bash
 npm install
 ```
 
-### 2. Start Server
+2. Copy and populate environment values.
+
+```bash
+copy .env.example .env
+```
+
+3. Start backend.
+
 ```bash
 npm start
 ```
 
-Server runs on `http://localhost:5000`
+Server starts at `http://localhost:5000`.
 
-## API Endpoints
+## API
 
-### Health Check
-```
-GET /health
-```
+### Health
 
-Response:
-```json
-{
-  "status": "Backend is running",
-  "timestamp": "2026-04-04T10:30:00.000Z"
-}
-```
+`GET /health`
 
 ### Run Auction
-```
-POST /api/run-auction
-```
 
-**Request:**
-```json
-{}
-```
+`POST /api/run-auction`
 
-**Response (Success):**
+Sample response:
+
 ```json
 {
-  "success": true,
   "winner": "Ravi",
-  "reason": "Selected Ravi due to higher urgency and low risk profile (medical need, no current salary, previous withdrawals)",
+  "reason": "High urgency from spending pressure and moderate risk profile",
   "scores": {
-    "Ravi": 72.4,
-    "Amit": 45.2,
-    "Priya": 58.6,
-    "Vikram": 62.1,
-    "Neha": 38.9
+    "Ravi": 54.12,
+    "Amit": 37.88,
+    "Priya": 42.31,
+    "Vikram": 40.27,
+    "Neha": 45.01
   },
-  "details": {
-    "urgency": 100,
-    "risk": 0.2,
-    "finalScore": 72.4
-  },
-  "timestamp": "2026-04-04T10:30:00.000Z"
+  "blockchain": {
+    "txHash": "0xabc123...",
+    "skipped": false
+  }
 }
 ```
+
+## Flow (`POST /api/run-auction`)
+
+1. Load members from mock model.
+2. For each member fetch:
+   - UPI transactions from Razorpay/Setu sandbox (fallback if unavailable).
+   - Bank data via Account Aggregator sandbox simulation (fallback if unavailable).
+   - Credit score via credit provider sandbox (fallback if unavailable).
+3. Send per-member payload to FastAPI `AI_PREDICT_URL`.
+4. Rank users by AI score.
+5. Select top scorer as winner.
+6. Store winner/scores/reason on Polygon Mumbai contract.
+7. Return clean JSON response.
 
 ## Project Structure
 
 ```
 backend/
-├── server.js                 # Main Express app
-├── package.json             # Dependencies
-├── routes/
-│   └── auction.js           # Auction routes
-├── controllers/
-│   └── auctionController.js # Route handlers
-├── models/
-│   └── memberModel.js       # Mock data
-├── services/
-│   └── aiService.js         # Scoring logic
-└── README.md
+  config/
+    env.js
+  contracts/
+    ChitAuctionRecorder.sol
+  controllers/
+    auctionController.js
+  models/
+    memberModel.js
+  routes/
+    auction.js
+  scripts/
+    deployContract.js
+  services/
+    upiService.js
+    bankService.js
+    creditService.js
+    aiService.js
+    blockchainService.js
+  server.js
 ```
 
-## Scoring Formula
+## Contract Deployment (Mumbai)
 
-```
-urgency = 
-  + 50 if medical need
-  + 30 if no salary
-  + 20 if previous withdrawals
-
-score = urgency * 0.6 + (1 - risk) * 0.4
-```
-
-## Mock Data
-
-5 members with realistic urgency + risk profiles:
-- **Ravi**: medical=true, salary=false, withdrawals=true, risk=0.2
-- **Amit**: medical=false, salary=true, withdrawals=false, risk=0.5
-- **Priya**: medical=false, salary=true, withdrawals=true, risk=0.3
-- **Vikram**: medical=true, salary=true, withdrawals=false, risk=0.4
-- **Neha**: medical=false, salary=false, withdrawals=true, risk=0.6
-
-## Architecture
-
-### Clean Separation of Concerns:
-- **Routes**: Define API endpoints
-- **Controllers**: Handle request/response
-- **Services**: Business logic (scoring)
-- **Models**: Data layer (mock/future DB)
-
-### Future Extensions:
-- Connect to Python AI module via HTTP
-- Add Redis caching
-- Add database integration
-- Add authentication
-
-## Testing with cURL
+1. Populate `PRIVATE_KEY` and `POLYGON_RPC_URL` in `.env`.
+2. Deploy contract:
 
 ```bash
-curl -X POST http://localhost:5000/api/run-auction \
-  -H "Content-Type: application/json" \
-  -d '{}'
+npm run deploy:contract
 ```
 
-Or use Postman/Insomnia to test endpoints.
+3. Copy returned `contractAddress` into `.env` as `CONTRACT_ADDRESS`.
+4. Restart backend.
 
----
+## Notes
 
-**Status:** ✅ Production-clean, hackathon-fast
+- When external providers are down or credentials are missing, services automatically return structured fallback data.
+- FastAPI endpoint expected at `http://localhost:8000/predict` by default.
+- Blockchain writes are non-blocking for business flow: if write fails, API still returns winner and score output with `blockchain.skipped = true`.

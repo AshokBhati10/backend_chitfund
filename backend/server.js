@@ -1,9 +1,10 @@
 const express = require('express');
 const cors = require('cors');
 const auctionRoutes = require('./routes/auction');
+const env = require('./config/env');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = env.port;
 
 // Middleware
 app.use(cors());
@@ -31,12 +32,12 @@ app.use((req, res) => {
 // Error handler
 app.use((err, req, res, next) => {
   console.error('Error:', err);
-  res.status(500).json({ error: 'Internal server error', message: err.message });
+  res.status(500).json({ error: 'Internal server error' });
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Backend server running on http://localhost:${PORT}`);
-  console.log(`📊 POST /api/run-auction - Start auction and get winner`);
+  console.log(`Backend server running on http://localhost:${PORT}`);
+  console.log('POST /api/run-auction is ready');
 });
 
 module.exports = app;
