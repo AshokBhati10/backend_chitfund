@@ -1,45 +1,59 @@
+const fs = require('fs');
+const path = require('path');
 const { ethers } = require('ethers');
-const env = require('../config/env');
+const env = require('../config/env.cjs');
 
-const contractAbi = [
-  'function recordAuction(string winner,string[] users,uint256[] scores,string reason,uint256 timestamp) external returns (bytes32)',
-];
+const artifactPath = path.join(
+  __dirname,
+  '..',
+  'artifacts',
+  'contracts',
+  'AuctionStorage.sol',
+  'AuctionStorage.json'
+);
 
-const toScaledInteger = (score) => Math.round(Number(score || 0) * 100);
+const getContractAbi = () => {
+  if (!fs.existsSync(artifactPath)) {
+    throw new Error('AuctionStorage artifact not found. Run: npx hardhat compile');
+  }
+
+  const artifact = JSON.parse(fs.readFileSync(artifactPath, 'utf8'));
+  if (!artifact.abi) {
+    throw new Error('Invalid AuctionStorage artifact: ABI missing');
+  }
+
+  return artifact.abi;
+};
+
+const validateBlockchainConfig = () => {
+  if (!env.blockchain.privateKey) {
+    throw new Error('Missing SEPOLIA_PRIVATE_KEY in .env');
+  }
+  if (!env.blockchain.rpcUrl) {
+    throw new Error('Missing SEPOLIA_RPC_URL in .env');
+  }
+  if (!env.blockchain.contractAddress) {
+    throw new Error('Missing CONTRACT_ADDRESS in .env');
+  }
+};
 
 const recordAuction = async ({ winner, reason, scores }) => {
-  if (!env.blockchain.enabled) {
-    return {
-      txHash: null,
-      skipped: true,
-      message: 'Blockchain config missing. Provide PRIVATE_KEY, POLYGON_RPC_URL, CONTRACT_ADDRESS.',
-    };
-  }
+  validateBlockchainConfig();
 
-  try {
-    const provider = new ethers.JsonRpcProvider(env.blockchain.rpcUrl, env.blockchain.chainId);
-    const wallet = new ethers.Wallet(env.blockchain.privateKey, provider);
-    const contract = new ethers.Contract(env.blockchain.contractAddress, contractAbi, wallet);
+  const provider = new ethers.JsonRpcProvider(env.blockchain.rpcUrl, env.blockchain.chainId);
+  const wallet = new ethers.Wallet(env.blockchain.privateKey, provider);
+  const abi = getContractAbi();
+  const contract = new ethers.Contract(env.blockchain.contractAddress, abi, wallet);
 
-    const users = Object.keys(scores || {});
-    const scoreValues = users.map((user) => toScaledInteger(scores[user]));
-    const timestamp = Math.floor(Date.now() / 1000);
+  const scoresPayload = typeof scores === 'string' ? scores : JSON.stringify(scores || {});
 
-    const tx = await contract.recordAuction(winner, users, scoreValues, reason, timestamp);
-    const receipt = await tx.wait(1);
+  const tx = await contract.storeAuction(winner, reason, scoresPayload);
+  const receipt = await tx.wait();
 
-    return {
-      txHash: receipt && receipt.hash ? receipt.hash : tx.hash,
-      skipped: false,
-      network: 'polygon-mumbai',
-    };
-  } catch (error) {
-    return {
-      txHash: null,
-      skipped: true,
-      error: error.message,
-    };
-  }
+  return {
+    txHash: receipt && receipt.hash ? receipt.hash : tx.hash,
+    network: 'sepolia',
+  };
 };
 
 module.exports = {

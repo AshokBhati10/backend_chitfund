@@ -60,7 +60,6 @@ const runAuction = async (req, res) => {
       scores,
       blockchain: {
         txHash: blockchainResult.txHash,
-        skipped: Boolean(blockchainResult.skipped),
       },
     });
   } catch (error) {

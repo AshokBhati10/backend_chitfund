@@ -1,5 +1,5 @@
 const axios = require('axios');
-const env = require('../config/env');
+const env = require('../config/env.cjs');
 
 const fallbackBankData = (userId) => {
   const numeric = Number(userId) || String(userId).length;

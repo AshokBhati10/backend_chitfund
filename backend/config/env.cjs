@@ -7,6 +7,14 @@ const parseNumber = (value, fallback) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const normalizePrivateKey = (value) => {
+  if (!value) {
+    return '';
+  }
+
+  return value.startsWith('0x') ? value : `0x${value}`;
+};
+
 const env = {
   nodeEnv: process.env.NODE_ENV || 'development',
   port: parseNumber(process.env.PORT, 5000),
@@ -33,10 +41,10 @@ const env = {
     predictUrl: process.env.AI_PREDICT_URL || 'http://localhost:8000/predict',
   },
   blockchain: {
-    privateKey: process.env.PRIVATE_KEY || '',
-    rpcUrl: process.env.POLYGON_RPC_URL || '',
+    privateKey: normalizePrivateKey(process.env.SEPOLIA_PRIVATE_KEY || ''),
+    rpcUrl: process.env.SEPOLIA_RPC_URL || '',
     contractAddress: process.env.CONTRACT_ADDRESS || '',
-    chainId: parseNumber(process.env.POLYGON_CHAIN_ID, 80001),
+    chainId: parseNumber(process.env.SEPOLIA_CHAIN_ID, 11155111),
   },
 };
 

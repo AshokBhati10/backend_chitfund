@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const auctionRoutes = require('./routes/auction');
-const env = require('./config/env');
+const env = require('./config/env.cjs');
 
 const app = express();
 const PORT = env.port;

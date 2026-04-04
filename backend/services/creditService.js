@@ -1,5 +1,5 @@
 const axios = require('axios');
-const env = require('../config/env');
+const env = require('../config/env.cjs');
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
