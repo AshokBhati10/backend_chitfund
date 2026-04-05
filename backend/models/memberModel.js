@@ -6,7 +6,7 @@
 const mockMembers = [
   {
     id: 1,
-    name: 'Ravi',
+    name: 'Ashok',
     medical: true,
     salary: false,
     withdrawals: true,
